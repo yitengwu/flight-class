@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🌬️ 风洞探究：副翼角度对飞行姿态的影响</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(145deg, #0b1a2e 0%, #1d3b5c 100%);
+            font-family: 'Segoe UI', 'Roboto', system-ui, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .explore-card {
+            background: #1e3a5f;
+            background-image: radial-gradient(circle at 30% 20%, #2c4e7a, #0f2a44);
+            border-radius: 40px;
+            box-shadow: 0 25px 40px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(173, 216, 255, 0.3);
+            padding: 24px 32px 28px 32px;
+            max-width: 1320px;
+            width: fit-content;
+            margin: 0 auto;
+            border: 2px solid #7fb2e5;
+        }
+
+        /* 顶部标题 */
+        .header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #e9f2ff;
+            text-shadow: 0 4px 8px #00000055, 0 0 14px #9fc5ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-bottom: 8px;
+        }
+
+        .header .question {
+            display: inline-block;
+            background: #0d1f31;
+            padding: 8px 24px;
+            border-radius: 50px;
+            color: #ffde9e;
+            font-size: 0.95rem;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            border: 1px solid #4a7aa7;
+            box-shadow: inset 0 2px 6px #00000066;
+        }
+
+        /* 模式切换栏 */
+        .mode-selector {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .mode-btn {
+            background: #0d1f31;
+            border: 2px solid #4a7aa7;
+            border-radius: 40px;
+            padding: 9px 20px;
+            color: #b8d6fc;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            letter-spacing: 0.5px;
+        }
+
+        .mode-btn:hover {
+            background: #1a3a58;
+            border-color: #7fb2e5;
+        }
+
+        .mode-btn.active {
+            background: #2d6ea8;
+            border-color: #ffd966;
+            color: #ffffff;
+            box-shadow: 0 0 18px #ffb34755, inset 0 0 10px #ffffff20;
+        }
+
+        .mode-btn .badge {
+            background: #ffb347;
+            color: #1a2f44;
+            font-size: 0.68rem;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 12px;
+        }
+
+        /* 左右分栏 */
+        .dual-view {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            gap: 20px;
+            justify-content: center;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .view-panel {
+            background: #0e2236;
+            border-radius: 28px;
+            padding: 14px 14px 10px 14px;
+            box-shadow: inset 0 0 30px #00000066, 0 12px 20px #00000040;
+            border: 1px solid #4a7aa7;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .view-panel.left-panel {
+            flex: 0 0 400px;
+            max-width: 400px;
+        }
+
+        .view-panel.right-panel {
+            flex: 0 0 660px;
+            max-width: 660px;
+        }
+
+        .view-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #b8d6fc;
+            letter-spacing: 1px;
+            padding: 8px 14px 6px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            justify-content: center;
+            border-bottom: 1px solid #2d5277;
+            margin-bottom: 10px;
+        }
+
+        .view-title .step-badge {
+            background: #ffb347;
+            color: #1a2f44;
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 20px;
+            letter-spacing: 1px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            border-radius: 18px;
+            background: radial-gradient(circle at 20% 30%, #2b4b6e, #112539);
+            cursor: default;
+            touch-action: none;
+        }
+
+        /* 控制面板 */
+        .control-panel {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+            gap: 20px;
+        }
+
+        .aileron-control {
+            flex: 2;
+            min-width: 340px;
+            max-width: 580px;
+            background: #0d1f31;
+            padding: 16px 28px 18px 28px;
+            border-radius: 60px;
+            box-shadow: inset 0 5px 8px #00000066, 0 8px 14px #00000030;
+            border: 1px solid #4a7aa7;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #c4defa;
+            font-weight: 600;
+            font-size: 1.05rem;
+            margin-bottom: 8px;
+            letter-spacing: 0.8px;
+        }
+
+        .control-label .left-side {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .angle-badge {
+            background: #1d3855;
+            padding: 6px 20px;
+            border-radius: 40px;
+            font-weight: 700;
+            color: #ffd966;
+            border: 1px solid #ffe08a;
+            box-shadow: 0 0 10px #ffb34755;
+            font-size: 1.3rem;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 16px;
+            background: linear-gradient(90deg, #2f6396, #67a9e0, #2f6396);
+            border-radius: 20px;
+            box-shadow: inset 0 2px 6px #00000088;
+            outline: none;
+            margin: 8px 0 4px;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 42px;
+            height: 42px;
+            background: radial-gradient(circle, #fff9e6, #ffc857);
+            border-radius: 50%;
+            border: 3px solid #fff2d0;
+            box-shadow: 0 0 20px #ffbb33, 0 6px 12px black;
+            cursor: grab;
+            transition: 0.05s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:active {
+            cursor: grabbing;
+            background: radial-gradient(circle, #fff9e6, #ffb82b);
+        }
+
+        input[type=range]::-moz-range-thumb {
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #fff9e6, #ffc857);
+            border-radius: 50%;
+            border: 3px solid #fff2d0;
+            box-shadow: 0 0 20px #ffbb33, 0 6px 12px black;
+            cursor: grab;
+        }
+
+        .hint-labels {
+            display: flex;
+            justify-content: space-between;
+            color: #80b5e0;
+            font-size: 0.85rem;
+            padding: 0 8px;
+            font-weight: 500;
+        }
+
+        /* 结论区 */
+        .conclusion-box {
+            flex: 1;
+            min-width: 240px;
+            background: #0b1f31;
+            padding: 14px 20px;
+            border-radius: 24px;
+            border: 1px solid #38658b;
+            box-shadow: inset 0 2px 6px #00000066;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .conclusion-box .label {
+            color: #b0cef0;
+            font-size: 0.75rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .conclusion-box .result {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.25rem;
+            font-weight: bold;
+            color: #ffde9e;
+            text-shadow: 0 0 12px #ffb347;
+        }
+
+        .conclusion-box .result .emoji {
+            font-size: 1.9rem;
+        }
+
+        .conclusion-box .explain {
+            color: #9fc5f0;
+            font-size: 0.82rem;
+            text-align: center;
+            line-height: 1.4;
+            margin-top: 3px;
+        }
+
+        .reset-btn {
+            background: #2d5277;
+            border: none;
+            border-radius: 40px;
+            padding: 14px 28px;
+            color: #eef7ff;
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            box-shadow: 0 8px 0 #0b1a2a, 0 8px 18px black;
+            transition: all 0.08s ease;
+            border: 1px solid #89b9f0;
+            letter-spacing: 1px;
+        }
+
+        .reset-btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 2px 0 #0b1a2a, 0 8px 18px black;
+        }
+
+        .reset-btn span {
+            font-size: 1.3rem;
+        }
+
+        /* 底部提示 */
+        .explore-hint {
+            text-align: center;
+            margin-top: 16px;
+            color: #8bb8e0;
+            font-size: 0.88rem;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .explore-hint .hint-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 1150px) {
+            .dual-view {
+                flex-wrap: wrap;
+            }
+            .view-panel.left-panel,
+            .view-panel.right-panel {
+                flex: 1 1 100%;
+                max-width: 100%;
+            }
+        }
+
+        @media (max-width: 850px) {
+            .explore-card {
+                padding: 18px 14px;
+                border-radius: 30px;
+            }
+            .header h1 {
+                font-size: 1.3rem;
+            }
+            .control-panel {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .aileron-control {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="explore-card">
+        <!-- 顶部标题 -->
+        <div class="header">
+            <h1>🌬️ 风洞探究：副翼角度对飞行姿态的影响</h1>
+            <div class="question">
+                <i>❓</i> 探究问题：副翼角度变化，气流怎样影响飞行？
+            </div>
+        </div>
+
+        <!-- 模式切换 -->
+        <div class="mode-selector">
+            <button class="mode-btn active" data-mode="right" id="modeRight">
+                <span>🛞</span> 只调右副翼 <span class="badge">左中立</span>
+            </button>
+            <button class="mode-btn" data-mode="left" id="modeLeft">
+                <span>🛞</span> 只调左副翼 <span class="badge">右中立</span>
+            </button>
+            <button class="mode-btn" data-mode="both" id="modeBoth">
+                <span>🔗</span> 左右联动 <span class="badge">真实</span>
+            </button>
+        </div>
+
+        <!-- 左右对比视图 -->
+        <div class="dual-view">
+            <!-- 左侧：风洞副翼特写 -->
+            <div class="view-panel left-panel">
+                <div class="view-title">
+                    <span class="step-badge">观察</span> 风洞实验 · 副翼气流
+                </div>
+                <canvas id="windTunnelCanvas" width="400" height="340"></canvas>
+            </div>
+            <!-- 右侧：飞行姿态 -->
+            <div class="view-panel right-panel">
+                <div class="view-title">
+                    <span class="step-badge">结果</span> 飞行姿态变化
+                </div>
+                <canvas id="flightCanvas" width="660" height="340"></canvas>
+            </div>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <div class="aileron-control">
+                <div class="control-label">
+                    <span class="left-side">
+                        <span style="font-size:1.3rem;">🎚️</span>
+                        <span id="sliderLabel">调节右副翼角度</span>
+                    </span>
+                    <span class="angle-badge" id="angleDisplay">0°</span>
+                </div>
+                <input type="range" id="rudderSlider" min="-30" max="30" value="0" step="1">
+                <div class="hint-labels">
+                    <span>⬆️ 上偏</span>
+                    <span>⚖️ 中立</span>
+                    <span>⬇️ 下偏</span>
+                </div>
+            </div>
+
+            <div class="conclusion-box">
+                <div class="label">飞行姿态</div>
+                <div class="result">
+                    <span class="emoji" id="attitudeEmoji">⚖️</span>
+                    <span id="attitudeText">平稳飞行</span>
+                </div>
+                <div class="explain" id="explainText">副翼中立，飞机保持平稳</div>
+            </div>
+
+            <button class="reset-btn" id="resetButton"><span>⟲</span> 复位</button>
+        </div>
+
+        <!-- 底部提示 -->
+        <div class="explore-hint">
+            <div class="hint-item">
+                <span>👆</span> 先选模式，再拖动滑块
+            </div>
+            <div class="hint-item">
+                <span>🔍</span> 观察气流走向与飞行姿态
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ---------- Canvas 初始化 ----------
+            const windTunnelCanvas = document.getElementById('windTunnelCanvas');
+            const windTunnelCtx = windTunnelCanvas.getContext('2d');
+            const flightCanvas = document.getElementById('flightCanvas');
+            const flightCtx = flightCanvas.getContext('2d');
+
+            const rudderSlider = document.getElementById('rudderSlider');
+            const angleDisplay = document.getElementById('angleDisplay');
+            const attitudeEmoji = document.getElementById('attitudeEmoji');
+            const attitudeText = document.getElementById('attitudeText');
+            const explainText = document.getElementById('explainText');
+            const sliderLabel = document.getElementById('sliderLabel');
+
+            const modeBtns = document.querySelectorAll('.mode-btn');
+
+            const WW = 400, WH = 340;
+            const FW = 660, FH = 340;
+
+            windTunnelCanvas.width = WW;
+            windTunnelCanvas.height = WH;
+            flightCanvas.width = FW;
+            flightCanvas.height = FH;
+
+            // ---------- 状态变量 ----------
+            // 模式：'right'、'left'、'both'
+            let controlMode = 'right';
+            // 滑块值 -30 ~ 30
+            let sliderValue = 0;
+
+            // 计算左右副翼实际角度
+            // 约定：正角度 = 副翼下偏，负角度 = 副翼上偏
+            function getAileronAngles() {
+                const v = sliderValue;
+                if (controlMode === 'right') {
+                    return { right: v, left: 0 };
+                } else if (controlMode === 'left') {
+                    return { left: v, right: 0 };
+                } else {
+                    return { right: v, left: -v };
+                }
+            }
+
+            // 计算飞行姿态
+            // 副翼下偏 → 该侧升力增大 → 飞机向另一侧滚转
+            function getFlightAttitude() {
+                const angles = getAileronAngles();
+                // 右副翼下偏(+) → 左滚转(-)；右副翼上偏(-) → 右滚转(+)
+                const rightContribution = -angles.right;
+                // 左副翼下偏(+) → 右滚转(+)；左副翼上偏(-) → 左滚转(-)
+                const leftContribution = angles.left;
+                const rollTendency = rightContribution + leftContribution;
+                const clamped = Math.max(-60, Math.min(60, rollTendency));
+                return {
+                    rollTendency: clamped,
+                    angles: angles,
+                    rollAngle: clamped * 0.6
+                };
+            }
+
+            // 获取当前聚焦的副翼角度（用于左侧特写）
+            // 右侧模式显示右副翼；左侧模式显示左副翼；联动模式显示右副翼（可扩展）
+            function getFocusAileronAngle() {
+                const angles = getAileronAngles();
+                if (controlMode === 'left') return angles.left;
+                return angles.right; // right 和 both 模式默认显示右副翼
+            }
+
+            function getFocusAileronName() {
+                if (controlMode === 'left') return '左副翼';
+                if (controlMode === 'right') return '右副翼';
+                return '右副翼'; // both 模式显示右副翼作为代表
+            }
+
+            // 副翼颜色
+            function getAileronColor(angle) {
+                const intensity = Math.min(1, Math.abs(angle) / 30);
+                const hue = 30 + intensity * 30;
+                return `hsl(${hue}, 85%, 68%)`;
+            }
+
+            // 状态文字
+            function getStatusText(angle) {
+                if (angle > 3) return '下偏';
+                if (angle < -3) return '上偏';
+                return '中立';
+            }
+
+            // ---------- 左侧：风洞气流模拟 ----------
+            function drawWindTunnel() {
+                const ctx = windTunnelCtx;
+                const w = WW, h = WH;
+                ctx.clearRect(0, 0, w, h);
+
+                const angle = getFocusAileronAngle();
+                const aileronName = getFocusAileronName();
+
+                // 背景 - 风洞实验室感
+                const grad = ctx.createLinearGradient(0, 0, w, 0);
+                grad.addColorStop(0, '#0d1a28');
+                grad.addColorStop(0.5, '#142a3e');
+                grad.addColorStop(1, '#0d1a28');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, w, h);
+
+                // 风洞管壁（上下边缘）
+                ctx.fillStyle = '#1a2f44';
+                ctx.fillRect(0, 0, w, 18);
+                ctx.fillRect(0, h - 18, w, 18);
+                ctx.strokeStyle = '#3a6a9a';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(0, 18);
+                ctx.lineTo(w, 18);
+                ctx.moveTo(0, h - 18);
+                ctx.lineTo(w, h - 18);
+                ctx.stroke();
+
+                // 风洞网格纹理
+                ctx.strokeStyle = '#1e3a5240';
+                ctx.lineWidth = 0.8;
+                for (let i = 0; i < w; i += 25) {
+                    ctx.beginPath();
+                    ctx.moveTo(i, 18);
+                    ctx.lineTo(i, h - 18);
+                    ctx.stroke();
+                }
+
+                // ===== 绘制气流流线（根据副翼偏转发生偏转）=====
+                const time = Date.now() * 0.002;
+                const deflectRad = angle * Math.PI / 180;
+
+                // 铰链位置（副翼固定在画面中央偏下）
+                const hingeX = w * 0.55;
+                const hingeY = h * 0.58;
+
+                // 绘制多条气流线
+                // 气流从左侧进入，遇到机翼/副翼后发生偏转
+                const flowCount = 14;
+                for (let i = 0; i < flowCount; i++) {
+                    const startY = 35 + i * ((h - 70) / flowCount);
+                    // 计算气流遇到副翼后的偏转
+                    // 接近副翼的气流线偏转更明显
+                    const distToHinge = Math.abs(startY - hingeY);
+                    const influence = Math.max(0, 1 - distToHinge / 120);
+                    // 副翼下偏(正角度) → 气流向下偏转；上偏(负角度) → 气流向上偏转
+                    const deflectY = Math.sin(deflectRad) * 45 * influence;
+                    // 加一点动态波动
+                    const wave = Math.sin(time * 3 + i * 0.8) * 4;
+
+                    ctx.save();
+                    const alpha = 0.25 + 0.35 * influence;
+                    ctx.strokeStyle = `rgba(120, 200, 255, ${alpha})`;
+                    ctx.lineWidth = 1.8 + influence * 1.2;
+                    ctx.shadowColor = '#6bc3ff';
+                    ctx.shadowBlur = 6 + influence * 8;
+
+                    ctx.beginPath();
+                    ctx.moveTo(0, startY);
+                    // 前段直线
+                    ctx.lineTo(hingeX - 80, startY + wave * 0.3);
+                    // 后段偏转曲线
+                    ctx.quadraticCurveTo(
+                        hingeX - 20, startY + deflectY * 0.3,
+                        hingeX + 40, startY + deflectY * 0.7
+                    );
+                    ctx.lineTo(w, startY + deflectY + wave);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // 绘制流动粒子（表示气流方向）
+                for (let i = 0; i < 30; i++) {
+                    const speed = 0.6 + (i % 5) * 0.25;
+                    const progress = ((time * speed * 0.3 + i * 0.08) % 1);
+                    const x = progress * w;
+
+                    // 找到气流线的Y位置
+                    const baseY = 35 + (i % flowCount) * ((h - 70) / flowCount);
+                    const distToHinge = Math.abs(baseY - hingeY);
+                    const influence = Math.max(0, 1 - distToHinge / 120);
+                    const deflectY = Math.sin(deflectRad) * 45 * influence;
+
+                    // 根据进度计算Y偏移
+                    let y = baseY;
+                    if (x > hingeX - 80) {
+                        const t = Math.min(1, (x - (hingeX - 80)) / (w - (hingeX - 80)));
+                        y = baseY + deflectY * t;
+                    }
+
+                    const size = 1.5 + (i % 3) * 0.6;
+                    const alpha = 0.35 + 0.4 * Math.sin(time * 4 + i);
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = '#a0d8ff';
+                    ctx.shadowColor = '#6bc3ff';
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                // ===== 绘制副翼（流线型剖面，侧视）=====
+                // 副翼是一个绕铰链旋转的流线型翼片
+                ctx.save();
+                ctx.shadowColor = '#00000080';
+                ctx.shadowBlur = 20;
+                ctx.shadowOffsetY = 6;
+
+                // 固定的机翼后缘部分（铰链前的机翼）
+                const wingGrad = ctx.createLinearGradient(0, hingeY - 60, 0, hingeY + 10);
+                wingGrad.addColorStop(0, '#c8daf0');
+                wingGrad.addColorStop(1, '#8aaccc');
+                ctx.fillStyle = wingGrad;
+                ctx.beginPath();
+                // 机翼主体（左侧）
+                ctx.moveTo(hingeX - 150, hingeY - 55);
+                ctx.quadraticCurveTo(hingeX - 60, hingeY - 65, hingeX, hingeY - 20);
+                ctx.lineTo(hingeX, hingeY + 20);
+                ctx.quadraticCurveTo(hingeX - 60, hingeY + 55, hingeX - 150, hingeY + 55);
+                ctx.quadraticCurveTo(hingeX - 170, hingeY, hingeX - 150, hingeY - 55);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#6a90b8';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                // 机翼高光
+                ctx.beginPath();
+                ctx.moveTo(hingeX - 140, hingeY - 40);
+                ctx.quadraticCurveTo(hingeX - 80, hingeY - 50, hingeX - 10, hingeY - 15);
+                ctx.strokeStyle = '#ffffff40';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // 铰链线标识
+                ctx.beginPath();
+                ctx.setLineDash([5, 5]);
+                ctx.moveTo(hingeX, hingeY - 60);
+                ctx.lineTo(hingeX, hingeY + 60);
+                ctx.strokeStyle = '#ffb347';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // ===== 流线型副翼（绕铰链旋转）=====
+                const aileronColor = getAileronColor(angle);
+                const deflect = angle * 0.9; // 视觉角度
+                const deflectR = deflect * Math.PI / 180;
+
+                ctx.translate(hingeX, hingeY);
+                ctx.rotate(deflectR);
+
+                // 副翼流线型剖面
+                ctx.beginPath();
+                ctx.moveTo(0, -18);
+                ctx.quadraticCurveTo(45, -22, 85, -10);
+                ctx.quadraticCurveTo(100, -5, 105, 0);
+                ctx.quadraticCurveTo(100, 5, 85, 10);
+                ctx.quadraticCurveTo(45, 22, 0, 18);
+                ctx.closePath();
+                ctx.fillStyle = aileronColor;
+                ctx.shadowColor = '#ffaa33';
+                ctx.shadowBlur = 22;
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff90';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // 副翼高光
+                ctx.beginPath();
+                ctx.moveTo(10, -12);
+                ctx.quadraticCurveTo(50, -18, 90, -8);
+                ctx.strokeStyle = '#ffffff60';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                // 铰链圆点
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(0, 0, 6, 0, 2 * Math.PI);
+                ctx.fillStyle = '#ffd966';
+                ctx.shadowColor = '#ffb347';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.restore();
+
+                // ===== 标注信息 =====
+                ctx.save();
+                // 副翼名称
+                ctx.font = 'bold 15px "Segoe UI", sans-serif';
+                ctx.fillStyle = '#b8d6fc';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${aileronName} 特写`, w * 0.5, 40);
+
+                // 角度文字
+                ctx.font = 'bold 20px "Segoe UI", sans-serif';
+                ctx.fillStyle = '#ffde9e';
+                ctx.shadowColor = '#ffb347';
+                ctx.shadowBlur = 12;
+                const arrow = angle > 3 ? '⬇️' : angle < -3 ? '⬆️' : '⏺';
+                ctx.fillText(`${arrow} ${Math.abs(angle)}° ${getStatusText(angle)}`, w * 0.5, h - 30);
+                ctx.restore();
+
+                // 气流方向标注
+                ctx.save();
+                ctx.font = '13px "Segoe UI", sans-serif';
+                ctx.fillStyle = '#6bc3ff';
+                ctx.globalAlpha = 0.7;
+                ctx.fillText('气流 →', 15, 38);
+                ctx.restore();
+
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
+            }
+
+            // ---------- 右侧：飞行姿态 ----------
+            function drawFlightView() {
+                const ctx = flightCtx;
+                const w = FW, h = FH;
+                ctx.clearRect(0, 0, w, h);
+
+                const attitude = getFlightAttitude();
+                const rollAngle = attitude.rollAngle;
+
+                // 风洞背景
+                const grad = ctx.createLinearGradient(0, 0, w, h);
+                grad.addColorStop(0, '#0f1e30');
+                grad.addColorStop(0.5, '#1a3a55');
+                grad.addColorStop(1, '#0f1e30');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, w, h);
+
+                // 动态气流
+                const time = Date.now() * 0.001;
+                for (let i = 0; i < 14; i++) {
+                    const y = 20 + i * 22 + Math.sin(time * 1.5 + i * 0.5) * 7;
+                    const alpha = 0.08 + 0.05 * Math.sin(time * 2 + i);
+                    ctx.save();
+                    ctx.strokeStyle = `rgba(140, 210, 255, ${alpha})`;
+                    ctx.lineWidth = 2.5;
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.bezierCurveTo(w * 0.25, y - 10, w * 0.65, y + 10, w, y + 5);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                // 流动粒子
+                for (let i = 0; i < 30; i++) {
+                    const speed = 0.4 + (i % 5) * 0.15;
+                    const x = (time * speed * 40 + i * 130) % (w + 150) - 80;
+                    const y = 15 + (i * 13) % (h - 30);
+                    const size = 1.5 + (i % 3) * 0.7;
+                    const alpha = 0.2 + 0.2 * Math.sin(time + i);
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.fillStyle = '#a0d0ff';
+                    ctx.shadowColor = '#6bc3ff';
+                    ctx.shadowBlur = 8;
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                // 边缘光晕
+                ctx.save();
+                ctx.shadowColor = '#9ac7ff';
+                ctx.shadowBlur = 15;
+                ctx.strokeStyle = '#a3ccff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(3, 3, w - 6, h - 6);
+                ctx.restore();
+
+                // 计算偏移
+                const offsetX = rollAngle * 2.0;
+                const offsetY = Math.sin(rollAngle * Math.PI / 180) * 8;
+
+                const centerX = w * 0.5;
+                const centerY = h * 0.5;
+
+                ctx.save();
+                ctx.translate(centerX + offsetX, centerY + offsetY);
+                ctx.rotate(rollAngle * Math.PI / 180);
+
+                const s = 1.0;
+
+                // ---------- 滑翔机机身 ----------
+                const bodyGrad = ctx.createLinearGradient(0, -12, 0, 12);
+                bodyGrad.addColorStop(0, '#f5faff');
+                bodyGrad.addColorStop(0.5, '#d8e8f8');
+                bodyGrad.addColorStop(1, '#a0b8d0');
+                ctx.fillStyle = bodyGrad;
+                ctx.shadowColor = '#a0c8ff';
+                ctx.shadowBlur = 16;
+                ctx.beginPath();
+                ctx.moveTo(95 * s, 0);
+                ctx.quadraticCurveTo(65 * s, -14 * s, 15 * s, -12 * s);
+                ctx.quadraticCurveTo(-35 * s, -10 * s, -70 * s, -5 * s);
+                ctx.quadraticCurveTo(-95 * s, -2 * s, -105 * s, 0);
+                ctx.quadraticCurveTo(-95 * s, 2 * s, -70 * s, 5 * s);
+                ctx.quadraticCurveTo(-35 * s, 10 * s, 15 * s, 12 * s);
+                ctx.quadraticCurveTo(65 * s, 14 * s, 95 * s, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#7aa0c8';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                // 机身高光
+                ctx.beginPath();
+                ctx.moveTo(75 * s, -6 * s);
+                ctx.quadraticCurveTo(25 * s, -10 * s, -45 * s, -5 * s);
+                ctx.strokeStyle = '#ffffff70';
+                ctx.lineWidth = 2.5;
+                ctx.stroke();
+
+                // ---------- 主翼 ----------
+                // 左翼
+                const wingGradL = ctx.createLinearGradient(0, -70, 0, -10);
+                wingGradL.addColorStop(0, '#e0eeff');
+                wingGradL.addColorStop(1, '#b0c8e0');
+                ctx.fillStyle = wingGradL;
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.moveTo(40 * s, -5 * s);
+                ctx.quadraticCurveTo(15 * s, -60 * s, -30 * s, -72 * s);
+                ctx.quadraticCurveTo(-70 * s, -76 * s, -85 * s, -62 * s);
+                ctx.quadraticCurveTo(-70 * s, -35 * s, -25 * s, -10 * s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#6ea0d0';
+                ctx.lineWidth = 2.2;
+                ctx.stroke();
+
+                // 右翼
+                const wingGradR = ctx.createLinearGradient(0, 10, 0, 70);
+                wingGradR.addColorStop(0, '#e0eeff');
+                wingGradR.addColorStop(1, '#b0c8e0');
+                ctx.fillStyle = wingGradR;
+                ctx.beginPath();
+                ctx.moveTo(40 * s, 5 * s);
+                ctx.quadraticCurveTo(15 * s, 60 * s, -30 * s, 72 * s);
+                ctx.quadraticCurveTo(-70 * s, 76 * s, -85 * s, 62 * s);
+                ctx.quadraticCurveTo(-70 * s, 35 * s, -25 * s, 10 * s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#6ea0d0';
+                ctx.lineWidth = 2.2;
+                ctx.stroke();
+
+                // 翼尖小翼
+                ctx.beginPath();
+                ctx.moveTo(-85 * s, -62 * s);
+                ctx.quadraticCurveTo(-100 * s, -78 * s, -112 * s, -72 * s);
+                ctx.quadraticCurveTo(-103 * s, -58 * s, -90 * s, -54 * s);
+                ctx.closePath();
+                ctx.fillStyle = '#c8daf8';
+                ctx.fill();
+                ctx.strokeStyle = '#5c8fc0';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(-85 * s, 62 * s);
+                ctx.quadraticCurveTo(-100 * s, 78 * s, -112 * s, 72 * s);
+                ctx.quadraticCurveTo(-103 * s, 58 * s, -90 * s, 54 * s);
+                ctx.closePath();
+                ctx.fillStyle = '#c8daf8';
+                ctx.fill();
+                ctx.strokeStyle = '#5c8fc0';
+                ctx.stroke();
+
+                // ---------- 尾翼 ----------
+                // 垂直尾翼
+                ctx.fillStyle = '#c8daf8';
+                ctx.beginPath();
+                ctx.moveTo(-68 * s, 0);
+                ctx.quadraticCurveTo(-82 * s, -28 * s, -96 * s, -24 * s);
+                ctx.quadraticCurveTo(-88 * s, -10 * s, -82 * s, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#5c8fc0';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 水平尾翼
+                ctx.fillStyle = '#c2daf8';
+                ctx.beginPath();
+                ctx.moveTo(-70 * s, -2 * s);
+                ctx.quadraticCurveTo(-92 * s, -20 * s, -108 * s, -16 * s);
+                ctx.quadraticCurveTo(-98 * s, -7 * s, -88 * s, -1 * s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#5c8fc0';
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(-70 * s, 2 * s);
+                ctx.quadraticCurveTo(-92 * s, 20 * s, -108 * s, 16 * s);
+                ctx.quadraticCurveTo(-98 * s, 7 * s, -88 * s, 1 * s);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#5c8fc0';
+                ctx.stroke();
+
+                // ---------- 副翼（根据实际角度）----------
+                const angles = attitude.angles;
+
+                // 右翼副翼
+                const rightAngle = angles.right;
+                const rightColor = getAileronColor(rightAngle);
+                ctx.save();
+                ctx.translate(8 * s, -32 * s);
+                ctx.rotate(rightAngle * 0.025);
+                ctx.beginPath();
+                ctx.moveTo(-14 * s, -3 * s);
+                ctx.quadraticCurveTo(4 * s, -10 * s, 20 * s, -6 * s);
+                ctx.quadraticCurveTo(4 * s, 2 * s, -14 * s, -3 * s);
+                ctx.closePath();
+                ctx.fillStyle = rightColor;
+                ctx.shadowColor = '#ffaa33';
+                ctx.shadowBlur = 16;
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff80';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.restore();
+
+                // 左翼副翼
+                const leftAngle = angles.left;
+                const leftColor = getAileronColor(leftAngle);
+                ctx.save();
+                ctx.translate(8 * s, 32 * s);
+                ctx.rotate(-leftAngle * 0.025);
+                ctx.beginPath();
+                ctx.moveTo(-14 * s, 3 * s);
+                ctx.quadraticCurveTo(4 * s, 10 * s, 20 * s, 6 * s);
+                ctx.quadraticCurveTo(4 * s, -2 * s, -14 * s, 3 * s);
+                ctx.closePath();
+                ctx.fillStyle = leftColor;
+                ctx.shadowColor = '#ffaa33';
+                ctx.shadowBlur = 16;
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff80';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.restore();
+
+                ctx.restore();
+
+                // 姿态文字
+                ctx.save();
+                ctx.font = 'bold 18px "Segoe UI", sans-serif';
+                ctx.fillStyle = '#ffde9e';
+                ctx.shadowColor = '#ffb347';
+                ctx.shadowBlur = 12;
+                let text = '⚖️ 平稳飞行';
+                if (attitude.rollTendency > 5) text = '↘️ 右滚转';
+                else if (attitude.rollTendency < -5) text = '↙️ 左滚转';
+                ctx.fillText(text, w - 200, 50);
+                ctx.restore();
+
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
+            }
+
+            // ---------- 更新结论文字 ----------
+            function updateConclusion() {
+                const angles = getAileronAngles();
+                const attitude = getFlightAttitude();
+
+                // 滑块标签
+                if (controlMode === 'right') sliderLabel.textContent = '调节右副翼角度';
+                else if (controlMode === 'left') sliderLabel.textContent = '调节左副翼角度';
+                else sliderLabel.textContent = '调节副翼角度（左右联动）';
+
+                // 结论
+                let emoji = '⚖️';
+                let text = '平稳飞行';
+                let explain = '副翼中立，两侧升力平衡，飞机平稳';
+
+                const roll = attitude.rollTendency;
+
+                if (controlMode === 'right' && Math.abs(angles.right) > 3) {
+                    if (angles.right > 0) {
+                        emoji = '↙️';
+                        text = '左滚转';
+                        explain = `右副翼下偏${angles.right}°，右侧升力增大，飞机向左滚转`;
+                    } else {
+                        emoji = '↘️';
+                        text = '右滚转';
+                        explain = `右副翼上偏${Math.abs(angles.right)}°，右侧升力减小，飞机向右滚转`;
+                    }
+                } else if (controlMode === 'left' && Math.abs(angles.left) > 3) {
+                    if (angles.left > 0) {
+                        emoji = '↘️';
+                        text = '右滚转';
+                        explain = `左副翼下偏${angles.left}°，左侧升力增大，飞机向右滚转`;
+                    } else {
+                        emoji = '↙️';
+                        text = '左滚转';
+                        explain = `左副翼上偏${Math.abs(angles.left)}°，左侧升力减小，飞机向左滚转`;
+                    }
+                } else if (controlMode === 'both' && Math.abs(roll) > 5) {
+                    if (roll > 0) {
+                        emoji = '↘️';
+                        text = '右滚转';
+                        explain = '右副翼下偏+左副翼上偏，飞机向右滚转';
+                    } else {
+                        emoji = '↙️';
+                        text = '左滚转';
+                        explain = '右副翼上偏+左副翼下偏，飞机向左滚转';
+                    }
+                }
+
+                attitudeEmoji.textContent = emoji;
+                attitudeText.textContent = text;
+                explainText.textContent = explain;
+            }
+
+            // ---------- 总绘制 ----------
+            function drawAll() {
+                drawWindTunnel();
+                drawFlightView();
+                updateConclusion();
+            }
+
+            // ---------- 动画循环 ----------
+            function animate() {
+                drawAll();
+                requestAnimationFrame(animate);
+            }
+
+            // ---------- 交互事件 ----------
+            function updateFromSlider() {
+                sliderValue = parseFloat(rudderSlider.value);
+                angleDisplay.textContent = sliderValue + '°';
+                updateConclusion();
+            }
+
+            rudderSlider.addEventListener('input', updateFromSlider);
+
+            modeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modeBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    controlMode = btn.dataset.mode;
+                    rudderSlider.value = 0;
+                    sliderValue = 0;
+                    angleDisplay.textContent = '0°';
+                    updateConclusion();
+                });
+            });
+
+            document.getElementById('resetButton').addEventListener('click', () => {
+                rudderSlider.value = 0;
+                sliderValue = 0;
+                angleDisplay.textContent = '0°';
+                updateConclusion();
+            });
+
+            // 初始化
+            updateFromSlider();
+            animate();
+        })();
+    </script>
+</body>
+</html>
